@@ -463,7 +463,9 @@
                     }
                 });
                 node.addEventListener('mouseup', e => {
-                    e.stopPropagation();
+                    if (!panning) {
+                        e.stopPropagation();
+                    }
                     if (drawing) {
                         drawing = false;
                         const box = this.el.getBoundingClientRect();
@@ -559,7 +561,7 @@
                 viewport[0] += e.movementX;
                 viewport[1] += e.movementY;
                 for (node of nodes) {
-                    node.el.style.transform = `translate(${viewport[0]}px, ${viewport[1]}px)`;
+                    node.el.style.transform = `translate(${viewport[0] / window.devicePixelRatio}px, ${viewport[1] / window.devicePixelRatio}px)`;
                 }
                 for (edge of edges) {
                     edge.update();
