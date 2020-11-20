@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>dfatool</title>
+
+    <style>
+        @import url('https://rsms.me/inter/inter.css');
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+            line-height: 24px;
+            letter-spacing: -0.006em;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background-color: #edffff;
+
+            --cap-height: 0.7272727272727273;
+            --font-size: 16px;
+            --line-height: 1.5;
+        }
+
+        body {
+            margin: 0;
+            position: relative;
+            user-select: none;
+        }
+
+        body,
+        html {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        h1,
+        h2,
+        h4,
+        p,
+        blockquote,
+        textarea,
+        .desc::after {
+            font-size: var(--font-size);
+            line-height: calc(var(--font-size) * var(--line-height));
+            margin: 0;
+            padding-top: calc(var(--font-size) * (var(--line-height) - var(--cap-height)) / 2);
+            margin-bottom: calc(-1 * var(--font-size) * (var(--line-height) - var(--cap-height)) / 2);
+        }
+
+        h1 {
+            --font-size: 96px;
+            --line-height: calc(112 / 96);
+            font-weight: 500;
+            letter-spacing: -0.022em;
+        }
+
+        h2 {
+            --font-size: 60px;
+            --line-height: calc(80px / 60px);
+            font-weight: 500;
+            letter-spacing: -0.022em;
+        }
+
+        h4 {
+            --font-size: 32px;
+            --line-height: 1.5;
+            font-weight: 500;
+            letter-spacing: -0.022em;
+        }
+
+        .grid {
+            position: absolute;
+            width: 100%;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-size: 8px 8px;
+            background-image:
+                linear-gradient(to right, rgba(0, 0, 0, 0.1) 0.5px, transparent 0.5px),
+                linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 0.5px, transparent 0.5px);
+            pointer-events: none;
+            height: 100%;
+        }
+
+        .noise {
+            background-image: url(/noise512.png);
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background-size: 256px;
+            opacity: 0.02;
+            pointer-events: none;
+        }
+
+        .workspace {
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            animation: selected 0.75s infinite;
+            border-width: 0;
+            border-style: dashed;
+        }
+
+        .node {
+            width: 48px;
+            height: 48px;
+            background: white;
+            border-radius: 24px;
+            border: 2px solid black;
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .workspace[data-tool="0"] .node {
+            cursor: grab;
+        }
+
+        .workspace[data-tool="1"] .node {
+            cursor: crosshair;
+        }
+
+        .workspace[data-tool="0"].dragging .node {
+            cursor: grabbing;
+        }
+
+        .workspace[data-tool="2"] {
+            cursor: crosshair;
+        }
+
+        .workspace[data-tool="2"] .node {
+            cursor: default;
+        }
+
+        .workspace[data-tool="0"] {
+            cursor: grab;
+        }
+
+        .workspace[data-tool="0"]:active {
+            cursor: grabbing;
+        }
+
+        .toolbox {
+            background-color: rgba(0, 0, 0, 0.3);
+            position: absolute;
+            top: 16px;
+            color: white;
+            left: 16px;
+            border: 1px solid white;
+            padding: 16px;
+            padding-top: 0;
+            display: flex;
+            align-items: flex-start;
+            flex-flow: column nowrap;
+            justify-content: flex-start;
+        }
+
+        .toolbox:hover {
+            background-color: rgba(10, 10, 10, 0.8);
+        }
+
+        .toolbox button {
+            width: 64px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 24px;
+            margin-top: 8px;
+            cursor: pointer;
+            border-radius: 0;
+            font-family: inerhit;
+            outline: none;
+            border: 0px solid white;
+            color: inherit;
+            background: transparent;
+        }
+
+        .toolbox button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .toolbox button.spaced {
+            margin-top: 16px;
+        }
+
+        .toolbox button.active {
+            border-width: 1px;
+        }
+
+        .selection {
+            position: absolute;
+            border: 1px solid black;
+            visibility: hidden;
+            background: rgba(0, 0, 0, 0.2);
+            transform-origin: top left;
+            pointer-events: none;
+        }
+
+        .node.selected {
+            border-style: inherit;
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+
+        @keyframes selected {
+            0% {
+                border-style: dashed;
+            }
+
+            75% {
+                border-style: solid;
+            }
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+        }
+
+        .label {
+            outline: none;
+            background: transparent;
+            border: none;
+            width: 16px;
+            height: 16px;
+            font-family: inherit;
+            text-align: center;
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+        }
+
+        .label::placeholder {
+            color: black;
+        }
+
+        .label:focus::placeholder {
+            color: transparent;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="grid"></div>
+    <canvas></canvas>
+    <div class="workspace" data-tool=1></div>
+    <div class="toolbox">
+        <p>tools</p>
+        <button class="spaced active" data-tool=1 data-activation-key=68><u>d</u>raw</button>
+        <button data-tool=0 data-activation-key=83><u>s</u>hift</button>
+        <button data-tool=2 data-activation-key=69>s<u>e</u>lect</button>
+    </div>
+    <div class="selection"></div>
+    <div class="noise"></div>
+
+    <script>
+        let next_index = 0;
+        let removedIndices = [];
+        let nodes = new Set();
+        let selectedNodes = new Set();
+        let edges = new Set();
+
+        const selection = document.querySelector('.selection');
+
+        const canvas = document.querySelector('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const handler = () => {
+            const box = canvas.getBoundingClientRect();
+            canvas.width = box.width * window.devicePixelRatio;
+            canvas.height = box.height * window.devicePixelRatio;
+        };
+
+        window.addEventListener('resize', handler);
+        handler();
+
+        let curve = null;
+        let origin = null;
+
+        const drawCurve = (curve, es) => {
+            ctx.beginPath();
+            ctx.moveTo(curve[0], curve[1]);
+            ctx.lineTo(curve[2], curve[3]);
+
+            ctx.stroke();
+            if (es) {
+                const midpoint = [
+                    curve[0] + (curve[2] - curve[0]) / 2,
+                    curve[1] + (curve[3] - curve[1]) / 2
+                ];
+
+                ctx.clearRect(midpoint[0] - 12, midpoint[1] - 12, 24, 24);
+            }
+        };
+
+        const draw = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+
+            if (curve != null) {
+                drawCurve(curve, false);
+            }
+
+            for (edge of edges) {
+                drawCurve([
+                    ...edge.i.center().map(a => a * window.devicePixelRatio),
+                    ...edge.o.center().map(a => a * window.devicePixelRatio)
+                ], true);
+            }
+
+            window.requestAnimationFrame(draw);
+        };
+
+        window.requestAnimationFrame(draw);
+
+        const endSelection = () => {
+            selecting = false;
+            selection.style.visibility = 'hidden';
+            selection.style.width = '0';
+            selection.style.height = '0';
+        };
+
+        let tool = 1;
+
+        const buttons = document.querySelectorAll('.toolbox button');
+        buttons.forEach((e) => {
+            e.addEventListener('click', (e) => {
+                for (button of buttons) {
+                    button.classList.remove('active');
+                }
+                e.target.classList.add('active');
+                tool = parseInt(e.target.getAttribute('data-tool'));
+                workspace.setAttribute('data-tool', tool);
+                for (node of nodes) {
+                    node.setTool(tool);
+                }
+                if (tool !== 2) {
+                    endSelection();
+                }
+                if (tool !== 0) {
+                    endPan();
+                }
+                if (tool !== 1) {
+                    endDraw();
+                }
+            });
+        });
+
+        codes = {};
+
+        document.querySelectorAll('[data-activation-key]').forEach((el) => {
+            codes[el.getAttribute('data-activation-key')] = el;
+        });
+
+        let offset = [0, 0];
+
+        const nodeDragStart = (e) => {
+            setTimeout(() => {
+                e.target.style.opacity = 0.5;
+            }, 1);
+            workspace.classList.add('dragging');
+            offset = [e.offsetX - 24, e.offsetY - 24];
+        };
+
+        const nodeDragEnd = function (e) {
+            e.target.style.opacity = 1;
+            this.updatePosition(e.clientX - offset[0], e.clientY - offset[1]);
+            workspace.classList.remove('dragging');
+            for (edge of this.localEdges) {
+                edge.update();
+            }
+        };
+
+        let drawing = false;
+
+        class Edge {
+            constructor(i, o) {
+                this.i = i;
+                this.o = o;
+                const field = document.createElement('input');
+                field.classList.add('label');
+                workspace.appendChild(field);
+                field.addEventListener('mousedown', e => e.stopPropagation());
+                field.addEventListener('keydown', e => e.stopPropagation());
+                field.focus();
+                field.placeholder = 'λ';
+                field.addEventListener('input', e => {
+                    if (e.data === null) {
+                        field.value = field.value.length > 0 ? field.value[0] : '';
+                        return;
+                    }
+                    if (e.data.length > 0 && field.value.length !== 0) {
+                        event.preventDefault();
+                        field.value = e.data[0];
+                    }
+                });
+                field.addEventListener('keyup', e => {
+                    if (e.keyCode === 27 || e.keyCode === 13) {
+                        field.blur();
+                    }
+                });
+                this.field = field;
+                this.update();
+            }
+
+            update() {
+                const pos_i = this.i.center();
+                const pos_o = this.o.center();
+
+                const midpoint = [
+                    pos_i[0] + (pos_o[0] - pos_i[0]) / 2,
+                    pos_i[1] + (pos_o[1] - pos_i[1]) / 2
+                ];
+
+                this.field.style.left = `${midpoint[0] - 8}px`;
+                this.field.style.top = `${midpoint[1] - 8}px`;
+            }
+
+            destroy() {
+                edges.delete(this);
+                this.field.remove();
+            }
+        }
+
+        class Node {
+            constructor(elem, x, y) {
+                const node = document.createElement('div');
+                node.classList.add('node');
+                workspace.appendChild(node);
+                removedIndices = removedIndices.sort((a, b) => b - a);
+                this.index = removedIndices.length !== 0 ? removedIndices.pop() : next_index++;
+                node.innerHTML = `<div>q<sub>${this.index}</sub></div>`;
+                node.addEventListener('dragstart', nodeDragStart);
+                node.addEventListener('dragend', nodeDragEnd.bind(this));
+                this.localEdges = new Set();
+                node.addEventListener('mousedown', e => {
+                    e.stopPropagation();
+                    if (tool == 1) {
+                        drawing = true;
+                        origin = this;
+                        curve = [e.clientX * window.devicePixelRatio, e.clientY * window.devicePixelRatio, e.clientX * window.devicePixelRatio, e.clientY * window.devicePixelRatio]
+                    }
+                });
+                node.addEventListener('click', e => {
+                    if (tool === 2) {
+                        if (selectedNodes.has(this)) {
+                            this.deselect();
+                        } else {
+                            this.select();
+                        }
+                    }
+                });
+                node.addEventListener('mouseup', e => {
+                    e.stopPropagation();
+                    if (drawing) {
+                        drawing = false;
+                        const box = this.el.getBoundingClientRect();
+                        curve[2] = (box.left + 24) * window.devicePixelRatio;
+                        curve[3] = (box.top + 24) * window.devicePixelRatio;
+                        curve = null;
+                        const edge = new Edge(origin, this);
+                        this.localEdges.add(edge);
+                        origin.localEdges.add(edge);
+                        edges.add(edge);
+                    }
+                });
+                this.el = node;
+                this.updatePosition(x, y);
+                this.setTool(tool);
+                nodes.add(this);
+            }
+
+            updatePosition(x, y) {
+                this.el.style.left = `${(x & -8) - 24}px`;
+                this.el.style.top = `${(y & -8) - 24}px`;
+            }
+
+            setTool(tool) {
+                this.el.draggable = tool === 0;
+                if (tool !== 2) {
+                    this.deselect();
+                }
+            }
+
+            destroy() {
+                this.el.remove();
+                nodes.delete(this);
+                selectedNodes.delete(this);
+                removedIndices.push(this.index);
+                for (edge of edges) {
+                    if (edge.i === this || edge.o === this) {
+                        edge.destroy();
+                    }
+                }
+            }
+
+            deselect() {
+                this.el.classList.remove('selected');
+                selectedNodes.delete(this);
+            }
+
+            select() {
+                this.el.classList.add('selected');
+                selectedNodes.add(this);
+            }
+
+            translate() {
+                const box = this.el.getBoundingClientRect();
+                this.el.style.left = `${box.left & -8}px`;
+                this.el.style.top = `${box.top & -8}px`;
+            }
+
+            center() {
+                const box = this.el.getBoundingClientRect();
+                return [box.left + 24, box.top + 24];
+            }
+        }
+
+        const workspace = document.querySelector('.workspace');
+
+        let selecting = false;
+        let panning = false;
+        let selection_top = [0, 0];
+
+        workspace.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) {
+                return;
+            }
+            if (tool === 2) {
+                selection.style.left = `${e.clientX}px`;
+                selection.style.top = `${e.clientY}px`;
+                selection.style.visibility = 'visible';
+                selection_top = [e.clientX, e.clientY];
+                selecting = true;
+            } else if (tool === 1) {
+                new Node(workspace, e.clientX, e.clientY);
+            } else if (tool === 0) {
+                panning = true;
+                workspace.classList.add('panning');
+            }
+        });
+
+        let viewport = [0, 0];
+
+        window.addEventListener('mousemove', e => {
+            if (panning) {
+                viewport[0] += e.movementX;
+                for (edge of edges) {
+                    edge.update();
+                }
+                viewport[1] += e.movementY;
+                for (node of nodes) {
+                    node.el.style.transform = `translate(${viewport[0]}px, ${viewport[1]}px)`;
+                }
+            }
+            if (drawing) {
+                curve[2] = e.clientX * window.devicePixelRatio;
+                curve[3] = e.clientY * window.devicePixelRatio;
+            }
+            if (selecting) {
+                let transform = "";
+                if (e.clientX < selection_top[0]) {
+                    transform += "scaleX(-1)"
+                }
+                if (e.clientY < selection_top[1]) {
+                    transform += " scaleY(-1)"
+                }
+                selection.style.transform = transform;
+                selection.style.width = `${Math.abs(e.clientX - selection_top[0])}px`;
+                selection.style.height = `${Math.abs(e.clientY - selection_top[1])}px`;
+            }
+        });
+        window.addEventListener('blur', () => {
+            endSelection();
+            endPan();
+            endDraw();
+        });
+
+        const intersect = (r1, r2) =>
+            !(r2.left > r1.right ||
+                r2.right < r1.left ||
+                r2.top > r1.bottom ||
+                r2.bottom < r1.top);
+
+        const endPan = () => {
+            if (panning) {
+                viewport[0] = viewport[0] & -8;
+                viewport[1] = viewport[1] & -8;
+                workspace.classList.remove('panning');
+                for (node of nodes) {
+                    node.translate();
+                    node.el.style.transform = 'none';
+                }
+                viewport = [0, 0];
+                panning = false;
+            }
+        };
+
+        const endDraw = () => {
+            if (drawing) {
+                curve = null;
+            }
+            drawing = false;
+        };
+
+        window.addEventListener('mouseup', () => {
+            endPan();
+            endDraw();
+            const box = selection.getBoundingClientRect();
+            if (box.width < 10 && box.height < 10) {
+                for (node of selectedNodes) {
+                    node.deselect();
+                }
+            } else {
+                for (node of nodes) {
+                    if (intersect(box, node.el.getBoundingClientRect())) {
+                        node.select();
+                    }
+                }
+            }
+            endSelection();
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (codes.hasOwnProperty(e.keyCode)) {
+                codes[e.keyCode].click();
+            }
+            if (tool === 2) {
+                if (e.keyCode === 46 || e.keyCode === 8 || e.keyCode === 67) {
+                    for (node of selectedNodes) {
+                        node.destroy();
+                    }
+                }
+                if (e.keyCode === 27) {
+                    for (node of selectedNodes) {
+                        node.deselect();
+                    }
+                }
+            }
+        });
+    </script>
+</body>
