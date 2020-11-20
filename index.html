@@ -207,7 +207,13 @@
 
         .node.selected {
             border-style: inherit;
-            background-color: rgba(255, 255, 255, 0.4);
+            background-color: #edffff;
+        }
+
+        .node.dragtarget {
+            background-color: #edffff;
+            border-color: rgba(0, 0, 0, 0.2);
+            color: rgba(0, 0, 0, 0.2);
         }
 
         @keyframes selected {
@@ -368,14 +374,14 @@
 
         const nodeDragStart = (e) => {
             setTimeout(() => {
-                e.target.style.opacity = 0.5;
+                e.target.classList.add('dragtarget');
             }, 1);
             workspace.classList.add('dragging');
             offset = [e.offsetX - 24, e.offsetY - 24];
         };
 
         const nodeDragEnd = function (e) {
-            e.target.style.opacity = 1;
+            e.target.classList.remove('dragtarget');
             this.updatePosition(e.clientX - offset[0], e.clientY - offset[1]);
             workspace.classList.remove('dragging');
             for (edge of this.localEdges) {
