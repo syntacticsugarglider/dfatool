@@ -300,14 +300,14 @@
                     curve[1] + (curve[3] - curve[1]) / 2
                 ];
 
-                ctx.clearRect(midpoint[0] - 12, midpoint[1] - 12, 24, 24);
+                ctx.clearRect(midpoint[0] - (12 * window.devicePixelRatio), midpoint[1] - (12 * window.devicePixelRatio), 24 * window.devicePixelRatio, 24 * window.devicePixelRatio);
             }
         };
 
         const draw = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.strokeStyle = '#000';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2 * window.devicePixelRatio;
 
             if (curve != null) {
                 drawCurve(curve, false);
@@ -557,12 +557,12 @@
         window.addEventListener('mousemove', e => {
             if (panning) {
                 viewport[0] += e.movementX;
-                for (edge of edges) {
-                    edge.update();
-                }
                 viewport[1] += e.movementY;
                 for (node of nodes) {
                     node.el.style.transform = `translate(${viewport[0]}px, ${viewport[1]}px)`;
+                }
+                for (edge of edges) {
+                    edge.update();
                 }
             }
             if (drawing) {
@@ -602,6 +602,9 @@
                 for (node of nodes) {
                     node.translate();
                     node.el.style.transform = 'none';
+                }
+                for (edge of edges) {
+                    edge.update();
                 }
                 viewport = [0, 0];
                 panning = false;
