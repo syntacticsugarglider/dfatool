@@ -626,9 +626,25 @@
             drawing = false;
         };
 
-        window.addEventListener('mouseup', () => {
+        const completeDraw = (e) => {
+            if (drawing) {
+                drawing = false;
+                const node = new Node(workspace, e.clientX, e.clientY);;
+                const box = node.el.getBoundingClientRect();
+                curve[2] = (box.left + 24) * window.devicePixelRatio;
+                curve[3] = (box.top + 24) * window.devicePixelRatio;
+                curve = null;
+                const edge = new Edge(origin, node);
+                node.localEdges.add(edge);
+                origin.localEdges.add(edge);
+                edges.add(edge);
+            }
+            drawing = false;
+        };
+
+        window.addEventListener('mouseup', e => {
             endPan();
-            endDraw();
+            completeDraw(e);
             const box = selection.getBoundingClientRect();
             if (box.width < 10 && box.height < 10) {
                 for (node of selectedNodes) {
